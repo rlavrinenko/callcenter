@@ -1,0 +1,49 @@
+<?php
+require_once __DIR__ . '/db.php';
+$conn = getDB();
+
+$q = isset($_GET['q']) ? $conn->real_escape_string($_GET['q']) : "";
+
+$sql = "SELECT p.id, p.full_name, p.birth_date,
+        GROUP_CONCAT(pp.phone SEPARATOR ', ') as phones
+        FROM persons p
+        LEFT JOIN person_phones pp ON p.id=pp.person_id
+        WHERE p.full_name LIKE '%$q%' OR pp.phone LIKE '%$q%'
+        GROUP BY p.id
+        ORDER BY p.full_name ASC";
+
+$res = $conn->query($sql);
+$html = "";
+while($row = $res->fetch_assoc()){
+    $id = $row['id'];
+    $full_name = htmlspecialchars($row['full_name']);
+    $birth_date = htmlspecialchars($row['birth_date']);
+    $phones = htmlspecialchars($row['phones']);
+
+    // перевірка чи є хоч один телефон у черзі
+    $in_queue = "Ні";
+    $phonesArr = explode(", ", $row['phones']);
+    foreach($phonesArr as $ph){
+        $ph = trim($ph);
+        if(!$ph) continue;
+        $check = $conn->query("SELECT id FROM numbers WHERE phone='$ph' LIMIT 1");
+        if($check && $check->num_rows>0){
+            $in_queue = "Так";
+            break;
+        }
+    }
+
+    $html .= "<tr>
+        <td>{$id}</td>
+        <td>{$full_name}</td>
+        <td>{$birth_date}</td>
+        <td>{$phones}</td>
+        <td>{$in_queue}</td>
+        <td>
+            <button class='btn btn-sm btn-primary edit-person' data-id='{$id}'>Редагувати</button>
+            <button class='btn btn-sm btn-danger delete-person' data-id='{$id}'>Видалити</button>
+            <button class='btn btn-sm btn-warning queue-person' data-id='{$id}'>В чергу</button>
+        </td>
+    </tr>";
+}
+echo $html ?: "<tr><td colspan='6'>Нічого не знайдено</td></tr>";

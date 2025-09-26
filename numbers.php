@@ -1,0 +1,132 @@
+<?php
+require_once __DIR__ . '/db.php';
+$conn = getDB();
+
+// Отримуємо пошукові параметри
+$searchPhone = $_GET['phone'] ?? '';
+$searchOwner = $_GET['owner'] ?? '';
+
+// Підготовка SQL з LIKE для фільтру
+$sql = "SELECT n.*, p.full_name AS owner_name
+        FROM numbers n
+        LEFT JOIN persons p ON n.owner_id = p.id
+        WHERE n.phone LIKE ? AND (p.full_name LIKE ? OR p.full_name IS NULL)
+        ORDER BY n.start_ts DESC";
+$stmt = $conn->prepare($sql);
+
+$likePhone = "%$searchPhone%";
+$likeOwner = "%$searchOwner%";
+$stmt->bind_param("ss", $likePhone, $likeOwner);
+$stmt->execute();
+$res = $stmt->get_result();
+?>
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Номери</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>.highlight { background-color: yellow; }</style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="index.php">Адмінка</a>
+    <ul class="navbar-nav">
+      <li class="nav-item"><a class="nav-link" href="index.php">Головна</a></li>
+      <li class="nav-item"><a class="nav-link" href="analytics.php">Аналітика</a></li>
+      <li class="nav-item"><a class="nav-link active" href="numbers.php">Номери</a></li>
+      <li class="nav-item"><a class="nav-link" href="persons.php">Персональні дані</a></li>
+    </ul>
+  </div>
+</nav>
+<div class="container my-5">
+<h1>Черга дзвінків</h1>
+
+<form class="row g-3 mb-4">
+    <div class="col-md-3">
+        <input type="text" name="phone" id="filter-phone" class="form-control" placeholder="Телефон" value="<?php echo htmlspecialchars($searchPhone); ?>">
+    </div>
+    <div class="col-md-3">
+        <input type="text" name="owner" id="filter-owner" class="form-control" placeholder="ПІБ власника" value="<?php echo htmlspecialchars($searchOwner); ?>">
+    </div>
+    <div class="col-md-3">
+        <button type="submit" class="btn btn-primary">Пошук</button>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Телефон</th>
+                <th>Власник</th>
+                <th>Статус</th>
+                <th>Натиснута кнопка</th>
+                <th>Початок дзвінка</th>
+                <th>Кінець дзвінка</th>
+                <th>Тривалість</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php
+        while($row = $res->fetch_assoc()){
+            $phone = htmlspecialchars($row['phone']);
+            $owner = htmlspecialchars($row['owner_name'] ?? '-');
+            $status = htmlspecialchars($row['status']);
+            $pressed = htmlspecialchars($row['pressed_key']);
+            $start = $row['start_ts'] ? date('Y-m-d H:i:s', $row['start_ts']) : '-';
+            $end = $row['end_ts'] ? date('Y-m-d H:i:s', $row['end_ts']) : '-';
+            $duration = htmlspecialchars($row['duration']);
+            
+            echo "<tr>
+                    <td>{$row['id']}</td>
+                    <td>$phone</td>
+                    <td>$owner</td>
+                    <td>$status</td>
+                    <td>$pressed</td>
+                    <td>$start</td>
+                    <td>$end</td>
+                    <td>$duration</td>
+                    <td>
+                        <button class='btn btn-success btn-sm arrived' data-id='{$row['id']}'>Прибув</button>
+                        <button class='btn btn-danger btn-sm remove-number' data-id='{$row['id']}'>Видалити</button>
+                    </td>
+                  </tr>";
+        }
+        ?>
+        </tbody>
+    </table>
+</div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script>
+$(function(){
+    $(".remove-number").click(function(){
+        if(!confirm("Видалити номер з черги?")) return;
+        var id = $(this).data("id");
+        $.post("remove_from_queue.php", {id: id}, function(resp){
+            alert(resp.message);
+            location.reload();
+        }, "json").fail(function(xhr){
+            alert("Помилка сервера: " + xhr.responseText);
+        });
+    });
+
+    $(".arrived").click(function(){
+        if(!confirm("Встановити статус 'removed'?")) return;
+        var id = $(this).data("id");
+        $.post("mark_arrived.php", {id: id}, function(resp){
+            alert(resp.message);
+            location.reload();
+        }, "json").fail(function(xhr){
+            alert("Помилка сервера: " + xhr.responseText);
+        });
+    });
+});
+</script>
+</body>
+</html>

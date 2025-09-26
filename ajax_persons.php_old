@@ -1,0 +1,75 @@
+<?php
+require_once __DIR__ . '/db.php';
+header('Content-Type: application/json; charset=utf-8');
+$conn = getDB();
+
+$nameFilter = isset($_GET['name']) ? $_GET['name'] : '';
+$phoneFilter = isset($_GET['phone']) ? $_GET['phone'] : '';
+
+// Отримуємо персони з їх телефонами
+$sql = "SELECT p.id, p.full_name, p.birth_date, GROUP_CONCAT(pp.phone SEPARATOR ',') AS phones
+        FROM persons p
+        LEFT JOIN person_phones pp ON pp.person_id = p.id
+        WHERE p.full_name LIKE ? AND (pp.phone LIKE ? OR pp.phone IS NULL)
+        GROUP BY p.id
+        ORDER BY p.id DESC";
+
+$stmt = $conn->prepare($sql);
+$likeName = "%$nameFilter%";
+$likePhone = "%$phoneFilter%";
+$stmt->bind_param("ss", $likeName, $likePhone);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$html = '';
+while($row = $result->fetch_assoc()){
+    $id = (int)$row['id'];
+    $full_name = $row['full_name'];
+    $birth = $row['birth_date'] ?: '';
+    $phones_raw = $row['phones'] ?? '';
+    $phones_display = $phones_raw ? htmlspecialchars(implode(', ', explode(',', $phones_raw))) : '';
+
+    // Перевірка: чи є хоча б один телефон цього користувача в таблиці numbers (незалежно від статусу)
+    $in_queue = 'Ні';
+    if ($phones_raw) {
+        $phones_arr = explode(',', $phones_raw);
+        $placeholders = implode(',', array_fill(0, count($phones_arr), '?'));
+        $types = str_repeat('s', count($phones_arr));
+        $sql2 = "SELECT COUNT(*) as cnt FROM numbers WHERE phone IN ($placeholders)";
+        $stmt2 = $conn->prepare($sql2);
+
+        $refs = [];
+        foreach($phones_arr as $i => $p) {
+            $phones_arr[$i] = trim($p);
+            $refs[] = &$phones_arr[$i];
+        }
+        array_unshift($refs, $types);
+        call_user_func_array([$stmt2, 'bind_param'], $refs);
+
+        $stmt2->execute();
+        $res2 = $stmt2->get_result();
+        if ($row2 = $res2->fetch_assoc()) {
+            if ((int)$row2['cnt'] > 0) $in_queue = 'Так';
+        }
+        $stmt2->close();
+    }
+
+    $html .= '<tr>';
+    $html .= '<td>'.htmlspecialchars($id).'</td>';
+    $html .= '<td>'.htmlspecialchars($full_name).'</td>';
+    $html .= '<td>'.htmlspecialchars($birth).'</td>';
+    $html .= '<td>'.$phones_display.'</td>';
+    $html .= '<td>'.htmlspecialchars($in_queue).'</td>';
+    $html .= '<td>
+        <button class="btn btn-sm btn-primary edit-person" 
+                data-id="'.htmlspecialchars($id).'" 
+                data-name="'.htmlspecialchars($full_name).'" 
+                data-birth="'.htmlspecialchars($birth).'" 
+                data-phones="'.htmlspecialchars($phones_raw).'">Редагувати</button>
+        <button class="btn btn-sm btn-danger delete-person" data-id="'.htmlspecialchars($id).'">Видалити</button>
+        <button class="btn btn-sm btn-success add-to-queue" data-id="'.htmlspecialchars($id).'" data-phones="'.htmlspecialchars($phones_raw).'">Додати до черги</button>
+    </td>';
+    $html .= '</tr>';
+}
+
+echo json_encode(['html' => $html], JSON_UNESCAPED_UNICODE);

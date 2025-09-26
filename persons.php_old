@@ -1,0 +1,144 @@
+<?php
+require_once __DIR__ . '/db.php';
+$conn = getDB();
+?>
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Персональні дані</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>.highlight { background-color: yellow; }</style>
+</head>
+<body>
+<!-- Меню -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="index.php">Адмінка</a>
+    <ul class="navbar-nav">
+      <li class="nav-item"><a class="nav-link" href="index.php">Головна</a></li>
+      <li class="nav-item"><a class="nav-link" href="analytics.php">Аналітика</a></li>
+      <li class="nav-item"><a class="nav-link" href="numbers.php">Номери</a></li>
+      <li class="nav-item"><a class="nav-link active" href="persons.php">Персональні дані</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="container my-5">
+  <h1>Персональні дані</h1>
+
+  <!-- Пошук -->
+  <form id="filter-form" class="row g-3 mb-4">
+      <div class="col-md-4">
+          <input type="text" name="name" id="filter-name" class="form-control" placeholder="Пошук за ПІБ">
+      </div>
+      <div class="col-md-4">
+          <input type="text" name="phone" id="filter-phone" class="form-control" placeholder="Пошук за телефоном">
+      </div>
+      <div class="col-md-4 text-end">
+          <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#personModal">Додати</button>
+      </div>
+  </form>
+
+  <!-- Таблиця -->
+  <div class="table-responsive">
+    <table class="table table-striped table-bordered" id="persons-table">
+      <thead class="table-dark">
+        <tr>
+          <th>ID</th>
+          <th>ПІБ</th>
+          <th>Дата народження</th>
+          <th>Телефони</th>
+          <th>В черзі</th>
+          <th>Дії</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Модальне вікно -->
+<div class="modal fade" id="personModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="person-form" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Додати/Редагувати</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="id" id="person-id">
+        <div class="mb-3">
+          <label class="form-label">ПІБ</label>
+          <input type="text" name="full_name" id="person-name" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Дата народження</label>
+          <input type="date" name="birth_date" id="person-birth" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Телефони (через кому)</label>
+          <input type="text" name="phones" id="person-phones" class="form-control" placeholder="Напр.: 380971112233,380631112233">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">Зберегти</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function loadPersons(){
+  $.get('ajax_persons.php', $("#filter-form").serialize(), function(data){
+      $("#persons-table tbody").html(data.html);
+  }, 'json');
+}
+
+$(function(){
+  loadPersons();
+
+  $("#filter-name, #filter-phone").on('input', loadPersons);
+
+  // Збереження (створення/редагування)
+  $("#person-form").on('submit', function(e){
+      e.preventDefault();
+      $.post('save_person.php', $(this).serialize(), function(resp){
+          alert(resp.message);
+          $("#personModal").modal('hide');
+          loadPersons();
+      }, 'json');
+  });
+
+  // Редагування
+  $("#persons-table").on('click', '.edit-person', function(){
+      $("#person-id").val($(this).data('id'));
+      $("#person-name").val($(this).data('name'));
+      $("#person-birth").val($(this).data('birth'));
+      $("#person-phones").val($(this).data('phones'));
+      $("#personModal").modal('show');
+  });
+
+  // Видалення
+  $("#persons-table").on('click', '.delete-person', function(){
+      if(!confirm('Видалити персону?')) return;
+      $.post('delete_person.php', {id: $(this).data('id')}, function(resp){
+          alert(resp.message);
+          loadPersons();
+      }, 'json');
+  });
+
+  // Додати до черги
+  $("#persons-table").on('click', '.add-to-queue', function(){
+      var id = $(this).data('id');
+      $.post('add_to_queue.php', {id: id}, function(resp){
+          alert(resp.message);
+          loadPersons();
+      }, 'json');
+  });
+});
+</script>
+</body>
+</html>
