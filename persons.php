@@ -10,9 +10,9 @@ $conn = getDB();
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 <style>
-.ui-autocomplete { z-index: 1050; }
-.is-invalid { border-color: red; }
+.ui-autocomplete { z-index:1050; }
 .highlight { background-color: yellow; }
+.is-invalid { border-color: red; }
 </style>
 </head>
 <body class="bg-light">
@@ -32,13 +32,23 @@ $conn = getDB();
 <h1>Персональні дані</h1>
 
 <form id="filter-form" class="row g-3 mb-4">
-    <div class="col-md-6">
-        <input type="text" name="search" id="filter-search" class="form-control" placeholder="ПІБ, телефон або дата створення (YYYY-MM-DD)">
+    <div class="col-md-3">
+        <input type="text" id="filter-name" name="name" class="form-control" placeholder="ПІБ">
     </div>
-    <div class="col-md-6 d-flex justify-content-end gap-2">
-        <button type="button" id="add-person" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#personModal">Додати користувача</button>
+    <div class="col-md-3">
+        <input type="text" id="filter-phone" name="phone" class="form-control" placeholder="Телефон">
+    </div>
+    <div class="col-md-3">
+        <input type="date" id="filter-created-from" name="created_from" class="form-control" placeholder="Створено від">
+    </div>
+    <div class="col-md-3">
+        <input type="date" id="filter-created-to" name="created_to" class="form-control" placeholder="Створено до">
     </div>
 </form>
+
+<div class="mb-3">
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#personModal">Додати користувача</button>
+</div>
 
 <div class="table-responsive">
     <table class="table table-striped table-bordered" id="persons-table">
@@ -48,7 +58,7 @@ $conn = getDB();
                 <th>ПІБ</th>
                 <th>Дата народження</th>
                 <th>Телефони</th>
-                <th>Номер у черзі</th>
+                <th>В черзі</th>
                 <th>Дата створення</th>
                 <th>Дії</th>
             </tr>
@@ -57,7 +67,7 @@ $conn = getDB();
     </table>
 </div>
 
-<!-- Модальне вікно додавання/редагування -->
+<!-- Модальне вікно -->
 <div class="modal fade" id="personModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <form id="personForm" class="modal-content">
@@ -98,74 +108,82 @@ $conn = getDB();
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+function loadData() {
+    $.get('ajax_persons.php', $("#filter-form").serialize(), function(data){
+        $("#persons-table tbody").html(data.html);
+    }, 'json');
+}
+
+function attachPhoneAutocomplete() {
+    $(".phone-item input").autocomplete({
+        source: function(request, response){
+            $.getJSON('autocomplete.php', {field:'phone', term:request.term}, response);
+        },
+        minLength: 1
+    });
+}
+
 $(function(){
-
-    function loadData(){
-        $.get('ajax_persons.php', $("#filter-form").serialize(), function(data){
-            $("#persons-table tbody").html(data.html);
-        }, 'json');
-    }
     loadData();
-    $("#filter-search").on('input', loadData);
-
-    function attachPhoneAutocomplete() {
-        $(".phone-item input").autocomplete({
-            source: function(request, response){
-                $.getJSON('autocomplete.php', {field:'phone', term:request.term}, response);
-            },
-            minLength: 1
-        });
-    }
-    attachPhoneAutocomplete();
+    $("#filter-name, #filter-phone, #filter-created-from, #filter-created-to").on('input change', loadData);
 
     $("#add-phone").click(function(){
-        $("#phone-list").append('<div class="input-group mb-2 phone-item"><input type="text" class="form-control" name="phone[]" required><button type="button" class="btn btn-danger remove-phone">Видалити</button></div>');
-        attachPhoneAutocomplete();
-    });
-    $("#phone-list").on('click', '.remove-phone', function(){ $(this).closest('.phone-item').remove(); });
-
-    $("#add-person").click(function(){
-        $("#personForm")[0].reset();
-        $("#person-id").val('');
-        $("#phone-list").html('<div class="input-group mb-2 phone-item"><input type="text" class="form-control" name="phone[]" required><button type="button" class="btn btn-danger remove-phone">Видалити</button></div>');
-        $(".modal-title").text("Додати користувача");
+        $("#phone-list").append(`<div class="input-group mb-2 phone-item">
+            <input type="text" class="form-control" name="phone[]" required>
+            <button type="button" class="btn btn-danger remove-phone">Видалити</button>
+        </div>`);
         attachPhoneAutocomplete();
     });
 
-    $("#persons-table").on('click', '.edit-person', function(){
-        var id = $(this).data('id');
-        var name = $(this).data('name');
-        var birth = $(this).data('birth');
-        var phones = $(this).data('phones') ? $(this).data('phones').split(', ') : [];
+    $("#phone-list").on('click','.remove-phone', function(){ $(this).closest('.phone-item').remove(); });
 
-        $("#person-id").val(id);
-        $("#person-name").val(name);
-        $("#person-birth").val(birth);
-        $("#phone-list").html('');
-        phones.forEach(function(p){
-            $("#phone-list").append('<div class="input-group mb-2 phone-item"><input type="text" class="form-control" name="phone[]" value="'+p+'" required><button type="button" class="btn btn-danger remove-phone">Видалити</button></div>');
+    $("#personForm").submit(function(e){
+        e.preventDefault();
+        $.post('save_person.php', $(this).serialize(), function(resp){
+            alert(resp.message);
+            if(resp.success){
+                $('#personModal').modal('hide');
+                loadData();
+            }
+        }, 'json');
+    });
+
+    $("#persons-table").on('click','.edit-person', function(){
+        let id = $(this).data('id');
+        $.getJSON('get_person.php', {id:id}, function(resp){
+            if(resp.success){
+                $("#person-id").val(resp.data.id);
+                $("#person-name").val(resp.data.full_name);
+                $("#person-birth").val(resp.data.birth_date);
+                $("#phone-list").html('');
+                resp.data.phones.forEach(function(p){
+                    $("#phone-list").append(`<div class="input-group mb-2 phone-item">
+                        <input type="text" class="form-control" name="phone[]" value="${p}" required>
+                        <button type="button" class="btn btn-danger remove-phone">Видалити</button>
+                    </div>`);
+                });
+                attachPhoneAutocomplete();
+                $(".modal-title").text("Редагувати користувача");
+                $('#personModal').modal('show');
+            } else alert(resp.message);
         });
-        $(".modal-title").text("Редагувати користувача");
-        attachPhoneAutocomplete();
-        $('#personModal').modal('show');
     });
 
-    $("#persons-table").on('click', '.delete-person', function(){
-        if(!confirm("Видалити користувача?")) return;
-        var id = $(this).data('id');
-        $.post('person_actions.php', {action:'delete', id:id}, function(resp){
+    $("#persons-table").on('click','.delete-person', function(){
+        if(!confirm('Видалити користувача?')) return;
+        $.post('delete_person.php',{id:$(this).data('id')}, function(resp){
             alert(resp.message);
             if(resp.success) loadData();
-        }, 'json');
+        },'json');
     });
 
-    $("#persons-table").on('click', '.add-to-queue', function(){
-        var id = $(this).data('id');
-        var phones = $(this).data('phones').split(', ');
-        $.post('add_to_queue.php', {person_id:id, phones:phones}, function(resp){
+    $("#persons-table").on('click','.add-to-queue', function(){
+        let id = $(this).data('id');
+        let phones = $(this).data('phones').split(',');
+        $.post('add_to_queue.php',{person_id:id, phones:phones}, function(resp){
             alert(resp.message);
-            loadData();
-        }, 'json');
+            if(resp.success) loadData();
+        },'json');
     });
 
 });
