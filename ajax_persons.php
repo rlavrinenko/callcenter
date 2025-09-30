@@ -68,7 +68,7 @@ while($row = $res->fetch_assoc()){
             <button class='btn btn-sm btn-primary edit-person' data-id='{$row['id']}'>Редагувати</button>
             <button class='btn btn-sm btn-danger delete-person' data-id='{$row['id']}'>Видалити</button>
             <button class='btn btn-sm btn-success add-to-queue' data-id='{$row['id']}' data-phones='{$phones}'>Додати в чергу</button>
-            <button class='btn btn-sm btn-warning remind-btn' data-person-id='{$row['id']}'>Нагадати</button>
+            <button class='btn btn-sm btn-warning remind-btn' data-person-id='{$row['id']}' data-phones='{$phones}'>Нагадати</button>
         </td>
     </tr>";
 }

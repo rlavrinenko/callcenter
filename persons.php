@@ -187,22 +187,12 @@ $(function(){
     });
 
     $("#persons-table").on('click','.remind-btn', function(){
-        let personId = $(this).data('person-id');
-        let remindText = prompt("Введіть текст нагадування:");
+        let id = $(this).data('person-id');
+        let phones = $(this).data('phones').split(',');
 
-        if(remindText !== null && remindText.trim() !== '') {
-            $.ajax({
-                url: 'ajax_remind.php',
-                method: 'POST',
-                data: { person_id: personId, remind_text: remindText },
-                success: function(response){
-                    alert(response.message);
-                },
-                error: function(){
-                    alert('Помилка при додаванні нагадування!');
-                }
-            });
-        }
+        $.post('ajax_remind.php',{person_id:id, phones:phones}, function(resp){
+            alert(resp.message);
+        },'json');
     });
 
 });
