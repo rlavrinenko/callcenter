@@ -192,6 +192,7 @@ $(function(){
 
         $.post('ajax_remind.php',{person_id:id, phones:phones}, function(resp){
             alert(resp.message);
+			if(resp.success) loadData();
         },'json');
     });
 
