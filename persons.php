@@ -186,7 +186,14 @@ $(function(){
         },'json');
     });
 
-   
+    $("#persons-table").on('click','.remind-btn', function(){
+        let id = $(this).data('person-id');
+        let phones = $(this).data('phones').split(',');
+
+        $.post('ajax_remind.php',{person_id:id, phones:phones}, function(resp){
+            alert(resp.message);
+        },'json');
+    });
 
 });
 </script>
