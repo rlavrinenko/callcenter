@@ -186,6 +186,25 @@ $(function(){
         },'json');
     });
 
+    $("#persons-table").on('click','.remind-btn', function(){
+        let personId = $(this).data('person-id');
+        let remindText = prompt("Введіть текст нагадування:");
+
+        if(remindText !== null && remindText.trim() !== '') {
+            $.ajax({
+                url: 'ajax_remind.php',
+                method: 'POST',
+                data: { person_id: personId, remind_text: remindText },
+                success: function(response){
+                    alert(response.message);
+                },
+                error: function(){
+                    alert('Помилка при додаванні нагадування!');
+                }
+            });
+        }
+    });
+
 });
 </script>
 </body>

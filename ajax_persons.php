@@ -4,10 +4,10 @@ $conn = getDB();
 
 header('Content-Type: application/json');
 
-$name = isset($_GET['name']) ? $_GET['name'] : '';
-$phone = isset($_GET['phone']) ? $_GET['phone'] : '';
-$created_from = isset($_GET['created_from']) ? $_GET['created_from'] : '';
-$created_to = isset($_GET['created_to']) ? $_GET['created_to'] : '';
+$name = $_GET['name'] ?? '';
+$phone = $_GET['phone'] ?? '';
+$created_from = $_GET['created_from'] ?? '';
+$created_to = $_GET['created_to'] ?? '';
 
 $sql = "SELECT p.id, p.full_name, p.birth_date, p.created_at,
         GROUP_CONCAT(pp.phone) AS phones,
@@ -68,6 +68,7 @@ while($row = $res->fetch_assoc()){
             <button class='btn btn-sm btn-primary edit-person' data-id='{$row['id']}'>Редагувати</button>
             <button class='btn btn-sm btn-danger delete-person' data-id='{$row['id']}'>Видалити</button>
             <button class='btn btn-sm btn-success add-to-queue' data-id='{$row['id']}' data-phones='{$phones}'>Додати в чергу</button>
+            <button class='btn btn-sm btn-warning remind-btn' data-person-id='{$row['id']}'>Нагадати</button>
         </td>
     </tr>";
 }
