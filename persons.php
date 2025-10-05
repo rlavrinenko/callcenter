@@ -1,143 +1,201 @@
 <?php
 require_once __DIR__ . '/db.php';
+$conn = getDB();
 ?>
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
-    <title>Персони</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<meta charset="UTF-8">
+<title>Персональні дані</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<style>
+.ui-autocomplete { z-index:1050; }
+.highlight { background-color: yellow; }
+.is-invalid { border-color: red; }
+</style>
 </head>
-</nav>
-<body >
+<body class="bg-light">
+
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
   <div class="container-fluid">
-    <a class="navbar-brand" href="index.php">Адмінка</a>
+    <a class="navbar-brand" href="index.php">Головна</a>
     <ul class="navbar-nav">
-      <li class="nav-item"><a class="nav-link" href="index.php">Головна</a></li>
       <li class="nav-item"><a class="nav-link" href="analytics.php">Аналітика</a></li>
       <li class="nav-item"><a class="nav-link" href="numbers.php">Номери</a></li>
       <li class="nav-item"><a class="nav-link active" href="persons.php">Персональні дані</a></li>
     </ul>
   </div>
 </nav>
-<div class="container">
 
+<div class="container my-5">
+<h1>Персональні дані</h1>
 
-    <h1 class="mb-4">Персони</h1>
-    <div class="mb-3 d-flex">
-        <input type="text" id="search" class="form-control me-2" placeholder="Пошук по ПІБ або телефону">
-        <button id="add-person" class="btn btn-success">Додати</button>
+<form id="filter-form" class="row g-3 mb-4">
+    <div class="col-md-3">
+        <input type="text" id="filter-name" name="name" class="form-control" placeholder="ПІБ">
     </div>
-    <table class="table table-bordered" id="persons-table">
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>ПІБ</th>
-            <th>Дата народження</th>
-		<th>Дата створення</th>
-            <th>Телефони</th>
-            <th>В черзі</th>
-            <th>Дії</th>
-        </tr>
+    <div class="col-md-3">
+        <input type="text" id="filter-phone" name="phone" class="form-control" placeholder="Телефон">
+    </div>
+    <div class="col-md-3">
+        <input type="date" id="filter-created-from" name="created_from" class="form-control" placeholder="Створено від">
+    </div>
+    <div class="col-md-3">
+        <input type="date" id="filter-created-to" name="created_to" class="form-control" placeholder="Створено до">
+    </div>
+</form>
+
+<div class="mb-3">
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#personModal">Додати користувача</button>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-bordered" id="persons-table">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>ПІБ</th>
+                <th>Дата народження</th>
+                <th>Телефони</th>
+                <th>В черзі</th>
+                <th>Дата створення</th>
+                <th>Дії</th>
+            </tr>
         </thead>
         <tbody></tbody>
     </table>
 </div>
 
 <!-- Модальне вікно -->
-<div class="modal fade" id="personModal" tabindex="-1">
-    <div class="modal-dialog">
-        <form id="person-form" class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Персона</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="personModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <form id="personForm" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Додати користувача</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="id" id="person-id">
+        <div class="mb-3">
+          <label class="form-label">ПІБ</label>
+          <input type="text" class="form-control" name="full_name" id="person-name" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Дата народження</label>
+          <input type="date" class="form-control" name="birth_date" id="person-birth">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Телефони</label>
+          <div id="phone-list">
+            <div class="input-group mb-2 phone-item">
+              <input type="text" class="form-control" name="phone[]" required>
+              <button type="button" class="btn btn-danger remove-phone">Видалити</button>
             </div>
-            <div class="modal-body">
-                <input type="hidden" name="id" id="person-id">
-                <div class="mb-3">
-                    <label class="form-label">ПІБ</label>
-                    <input type="text" name="full_name" id="person-full_name" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Дата народження</label>
-                    <input type="date" name="birth_date" id="person-birth_date" class="form-control">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Телефони (через кому)</label>
-                    <input type="text" name="phones" id="person-phones" class="form-control">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-primary">Зберегти</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
-            </div>
-        </form>
-    </div>
+          </div>
+          <button type="button" class="btn btn-sm btn-secondary" id="add-phone">Додати телефон</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">Зберегти</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
+      </div>
+    </form>
+  </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function loadPersons(query="") {
-    $.get("ajax_persons.php", {q: query}, function (html) {
-        $("#persons-table tbody").html(html);
+function loadData() {
+    $.get('ajax_persons.php', $("#filter-form").serialize(), function(data){
+        $("#persons-table tbody").html(data.html);
+    }, 'json');
+}
+
+function attachPhoneAutocomplete() {
+    $(".phone-item input").autocomplete({
+        source: function(request, response){
+            $.getJSON('autocomplete.php', {field:'phone', term:request.term}, response);
+        },
+        minLength: 1
     });
 }
 
 $(function(){
-    loadPersons();
+    loadData();
+    $("#filter-name, #filter-phone, #filter-created-from, #filter-created-to").on('input change', loadData);
 
-    $("#search").on("keyup", function(){
-        loadPersons($(this).val());
+    $("#add-phone").click(function(){
+        $("#phone-list").append(`<div class="input-group mb-2 phone-item">
+            <input type="text" class="form-control" name="phone[]" required>
+            <button type="button" class="btn btn-danger remove-phone">Видалити</button>
+        </div>`);
+        attachPhoneAutocomplete();
     });
 
-    $("#add-person").click(function(){
-        $("#person-id").val("");
-        $("#person-full_name").val("");
-        $("#person-birth_date").val("");
-        $("#person-phones").val("");
-        new bootstrap.Modal(document.getElementById('personModal')).show();
-    });
+    $("#phone-list").on('click','.remove-phone', function(){ $(this).closest('.phone-item').remove(); });
 
-    $("#person-form").submit(function(e){
+    $("#personForm").submit(function(e){
         e.preventDefault();
-        $.post("save_person.php", $(this).serialize(), function(resp){
+        $.post('save_person.php', $(this).serialize(), function(resp){
             alert(resp.message);
             if(resp.success){
-                loadPersons();
-                bootstrap.Modal.getInstance(document.getElementById('personModal')).hide();
+                $('#personModal').modal('hide');
+                loadData();
             }
-        }, "json");
+        }, 'json');
     });
 
-    $("#persons-table").on("click", ".edit-person", function(){
-        var id = $(this).data("id");
-        $.getJSON("save_person.php", {id:id}, function(data){
-            $("#person-id").val(data.id);
-            $("#person-full_name").val(data.full_name);
-            $("#person-birth_date").val(data.birth_date);
-            $("#person-phones").val(data.phones);
-            new bootstrap.Modal(document.getElementById('personModal')).show();
+    $("#persons-table").on('click','.edit-person', function(){
+        let id = $(this).data('id');
+        $.getJSON('get_person.php', {id:id}, function(resp){
+            if(resp.success){
+                $("#person-id").val(resp.data.id);
+                $("#person-name").val(resp.data.full_name);
+                $("#person-birth").val(resp.data.birth_date);
+                $("#phone-list").html('');
+                resp.data.phones.forEach(function(p){
+                    $("#phone-list").append(`<div class="input-group mb-2 phone-item">
+                        <input type="text" class="form-control" name="phone[]" value="${p}" required>
+                        <button type="button" class="btn btn-danger remove-phone">Видалити</button>
+                    </div>`);
+                });
+                attachPhoneAutocomplete();
+                $(".modal-title").text("Редагувати користувача");
+                $('#personModal').modal('show');
+            } else alert(resp.message);
         });
     });
 
-    $("#persons-table").on("click", ".delete-person", function(){
-        if(!confirm("Видалити цю персону?")) return;
-        var id = $(this).data("id");
-        $.post("delete_person.php",{id:id}, function(resp){
+    $("#persons-table").on('click','.delete-person', function(){
+        if(!confirm('Видалити користувача?')) return;
+        $.post('delete_person.php',{id:$(this).data('id')}, function(resp){
             alert(resp.message);
-            loadPersons();
-        }, "json");
+            if(resp.success) loadData();
+        },'json');
     });
 
-    $("#persons-table").on("click", ".queue-person", function(){
-        var id = $(this).data("id");
-        $.post("queue_person.php",{id:id}, function(resp){
+    $("#persons-table").on('click','.add-to-queue', function(){
+        let id = $(this).data('id');
+        let phones = $(this).data('phones').split(',');
+        $.post('add_to_queue.php',{person_id:id, phones:phones}, function(resp){
             alert(resp.message);
-            loadPersons();
-        }, "json");
+            if(resp.success) loadData();
+        },'json');
     });
+
+    $("#persons-table").on('click','.remind-btn', function(){
+        let id = $(this).data('person-id');
+        let phones = $(this).data('phones').split(',');
+
+        $.post('ajax_remind.php',{person_id:id, phones:phones}, function(resp){
+            alert(resp.message);
+			if(resp.success) loadData();
+        },'json');
+    });
+
 });
 </script>
 </body>
