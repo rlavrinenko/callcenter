@@ -43,9 +43,16 @@ while($row = $res->fetch_assoc()){
         <td>{$phones}</td>
         <td>{$in_queue}</td>
         <td>
+<<<<<<< Updated upstream
             <button class='btn btn-sm btn-primary edit-person' data-id='{$id}'>Редагувати</button>
             <button class='btn btn-sm btn-danger delete-person' data-id='{$id}'>Видалити</button>
             <button class='btn btn-sm btn-warning queue-person' data-id='{$id}'>В чергу</button>
+=======
+            <button class='btn btn-sm btn-primary edit-person' data-id='{$row['id']}'>Редагувати</button>
+            <button class='btn btn-sm btn-danger delete-person' data-id='{$row['id']}'>Видалити</button>
+            <button class='btn btn-sm btn-success add-to-queue' data-id='{$row['id']}' data-phones='{$phones}'>Додати в чергу</button>
+            <button class='btn btn-sm btn-warning remind-btn' data-id='{$row['id']}'>Нагадати</button>
+>>>>>>> Stashed changes
         </td>
     </tr>";
 }

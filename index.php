@@ -17,7 +17,7 @@ $conn = getDB();
       <li class="nav-item"><a class="nav-link active" href="index.php">Головна</a></li>
       <li class="nav-item"><a class="nav-link" href="analytics.php">Аналітика</a></li>
       <li class="nav-item"><a class="nav-link" href="numbers.php">Номери</a></li>
-      <li class="nav-item"><a class="nav-link" href="persons.php">Персональні дані</a></li>
+      <li class="nav-item"><a class="nav-link" href="visitors.php">Персональні дані</a></li>
     </ul>
   </div>
 </nav>

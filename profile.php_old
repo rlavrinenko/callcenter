@@ -1,0 +1,148 @@
+<?php
+require_once __DIR__ . '/db.php';
+$conn = getDB();
+
+$person_id = intval($_GET['id'] ?? 0);
+if ($person_id <= 0) {
+    header("Location: visitors.php");
+    exit;
+}
+
+// Повідомлення для користувача
+$msg = '';
+$msg_class = 'success';
+
+// Оновлення ПІБ та дати народження
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
+    $full_name = trim($_POST['full_name']);
+    $birth_date = trim($_POST['birth_date']);
+    if ($full_name !== '') {
+        $stmt = $conn->prepare("UPDATE persons SET full_name=?, birth_date=? WHERE id=?");
+        $stmt->bind_param("ssi", $full_name, $birth_date, $person_id);
+        if($stmt->execute()){
+            $msg = 'Профіль успішно оновлено!';
+        } else {
+            $msg = 'Помилка оновлення профілю!';
+            $msg_class = 'danger';
+        }
+        $stmt->close();
+    }
+}
+
+// Додавання нового телефону
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_phone'])) {
+    $phone = trim($_POST['new_phone']);
+    if ($phone !== '') {
+        $stmt = $conn->prepare("INSERT INTO person_phones (person_id, phone, status, pressed, updated_at) VALUES (?, ?, 'new', '', NOW())");
+        $stmt->bind_param("is", $person_id, $phone);
+        if($stmt->execute()){
+            $msg = 'Телефон успішно додано!';
+        } else {
+            $msg = 'Помилка додавання телефону!';
+            $msg_class = 'danger';
+        }
+        $stmt->close();
+    }
+}
+
+// Оновлення існуючого телефону
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_phone'])) {
+    $phone_id = intval($_POST['phone_id']);
+    $new_phone = trim($_POST['phone']);
+    if ($phone_id > 0 && $new_phone !== '') {
+        $stmt = $conn->prepare("UPDATE person_phones SET phone=?, updated_at=NOW() WHERE id=?");
+        $stmt->bind_param("si", $new_phone, $phone_id);
+        if($stmt->execute()){
+            $msg = 'Телефон успішно оновлено!';
+        } else {
+            $msg = 'Помилка оновлення телефону!';
+            $msg_class = 'danger';
+        }
+        $stmt->close();
+    }
+}
+
+// Видалення телефону
+if (isset($_GET['delete_phone'])) {
+    $phone_id = intval($_GET['delete_phone']);
+    if($conn->query("DELETE FROM person_phones WHERE id=$phone_id")){
+        $msg = 'Телефон успішно видалено!';
+    } else {
+        $msg = 'Помилка видалення телефону!';
+        $msg_class = 'danger';
+    }
+    header("Location: profile.php?id=$person_id&msg=$msg&msg_class=$msg_class");
+    exit;
+}
+
+// Дані користувача
+$res = $conn->query("SELECT * FROM persons WHERE id=$person_id LIMIT 1");
+$person = $res->fetch_assoc();
+
+// Телефони
+$phones_res = $conn->query("SELECT * FROM person_phones WHERE person_id=$person_id");
+
+// Отримання повідомлення з GET після редиректу (видалення телефону)
+if(isset($_GET['msg'])) {
+    $msg = $_GET['msg'];
+    $msg_class = $_GET['msg_class'] ?? 'success';
+}
+?>
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Профіль користувача</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container py-4">
+    <h2 class="mb-4">Профіль користувача: <?= htmlspecialchars($person['full_name']) ?></h2>
+
+    <!-- Повідомлення -->
+    <?php if($msg): ?>
+        <div class="alert alert-<?= $msg_class ?> alert-dismissible fade show" role="alert">
+            <?= htmlspecialchars($msg) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php endif; ?>
+
+    <!-- Форма редагування ПІБ та дати народження -->
+    <form method="POST" class="mb-4">
+        <div class="mb-3">
+            <label>ПІБ</label>
+            <input type="text" name="full_name" class="form-control" value="<?= htmlspecialchars($person['full_name']) ?>" required>
+        </div>
+        <div class="mb-3">
+            <label>Дата народження</label>
+            <input type="date" name="birth_date" class="form-control" value="<?= $person['birth_date'] ?>">
+        </div>
+        <button type="submit" name="update_profile" class="btn btn-primary">Зберегти</button>
+        <a href="visitors.php" class="btn btn-secondary">Назад</a>
+    </form>
+
+    <h4>Телефони</h4>
+    <ul class="list-group mb-3">
+        <?php while($ph = $phones_res->fetch_assoc()): ?>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <form method="POST" class="d-flex w-100 me-2">
+                    <input type="hidden" name="phone_id" value="<?= $ph['id'] ?>">
+                    <input type="text" name="phone" class="form-control me-2" value="<?= htmlspecialchars($ph['phone']) ?>" required>
+                    <button type="submit" name="update_phone" class="btn btn-sm btn-primary me-2">Зберегти</button>
+                </form>
+                <a href="?delete_phone=<?= $ph['id'] ?>" class="btn btn-sm btn-danger"
+                   onclick="return confirm('Видалити цей телефон?');">x</a>
+            </li>
+        <?php endwhile; ?>
+    </ul>
+
+    <!-- Форма для додавання нового телефону -->
+    <form method="POST" class="d-flex mb-3">
+        <input type="text" name="new_phone" class="form-control me-2" placeholder="Новий телефон" required>
+        <button type="submit" name="add_phone" class="btn btn-success">Додати телефон</button>
+    </form>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

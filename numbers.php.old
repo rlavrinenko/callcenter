@@ -7,8 +7,8 @@ $searchPhone = $_GET['phone'] ?? '';
 $searchOwner = $_GET['owner'] ?? '';
 
 // Підготовка SQL з LIKE для фільтру
-$sql = "SELECT n.*, p.full_name AS owner_name
-        FROM numbers n
+$sql = "SELECT n.*, p.full_name AS owner_name 
+        FROM numbers n 
         LEFT JOIN persons p ON n.owner_id = p.id
         WHERE n.phone LIKE ? AND (p.full_name LIKE ? OR p.full_name IS NULL)
         ORDER BY n.start_ts DESC";
@@ -36,10 +36,11 @@ $res = $stmt->get_result();
       <li class="nav-item"><a class="nav-link" href="index.php">Головна</a></li>
       <li class="nav-item"><a class="nav-link" href="analytics.php">Аналітика</a></li>
       <li class="nav-item"><a class="nav-link active" href="numbers.php">Номери</a></li>
-      <li class="nav-item"><a class="nav-link" href="visitors.php">Персональні дані</a></li>
+      <li class="nav-item"><a class="nav-link" href="persons.php">Персональні дані</a></li>
     </ul>
   </div>
 </nav>
+
 <div class="container my-5">
 <h1>Черга дзвінків</h1>
 
@@ -75,25 +76,16 @@ $res = $stmt->get_result();
         while($row = $res->fetch_assoc()){
             $phone = htmlspecialchars($row['phone']);
             $owner = htmlspecialchars($row['owner_name'] ?? '-');
-            $status = htmlspecialchars($row['status']);
-            $pressed = htmlspecialchars($row['pressed_key']);
-            $start = $row['start_ts'] ? date('Y-m-d H:i:s', $row['start_ts']) : '-';
-            $end = $row['end_ts'] ? date('Y-m-d H:i:s', $row['end_ts']) : '-';
-            $duration = htmlspecialchars($row['duration']);
-            
             echo "<tr>
                     <td>{$row['id']}</td>
                     <td>$phone</td>
                     <td>$owner</td>
-                    <td>$status</td>
-                    <td>$pressed</td>
-                    <td>$start</td>
-                    <td>$end</td>
-                    <td>$duration</td>
-                    <td>
-                        <button class='btn btn-success btn-sm arrived' data-id='{$row['id']}'>Прибув</button>
-                        <button class='btn btn-danger btn-sm remove-number' data-id='{$row['id']}'>Видалити</button>
-                    </td>
+                    <td>{$row['status']}</td>
+                    <td>{$row['pressed_key']}</td>
+                    <td>".($row['start_ts'] ? date('Y-m-d H:i:s', $row['start_ts']) : '-')."</td>
+                    <td>".($row['end_ts'] ? date('Y-m-d H:i:s', $row['end_ts']) : '-')."</td>
+                    <td>{$row['duration']}</td>
+                    <td><button class='btn btn-danger btn-sm remove-number' data-id='{$row['id']}'>Видалити з черги</button></td>
                   </tr>";
         }
         ?>
@@ -109,17 +101,6 @@ $(function(){
         if(!confirm("Видалити номер з черги?")) return;
         var id = $(this).data("id");
         $.post("remove_from_queue.php", {id: id}, function(resp){
-            alert(resp.message);
-            location.reload();
-        }, "json").fail(function(xhr){
-            alert("Помилка сервера: " + xhr.responseText);
-        });
-    });
-
-    $(".arrived").click(function(){
-        if(!confirm("Встановити статус 'removed'?")) return;
-        var id = $(this).data("id");
-        $.post("mark_arrived.php", {id: id}, function(resp){
             alert(resp.message);
             location.reload();
         }, "json").fail(function(xhr){
